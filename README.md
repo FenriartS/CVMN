@@ -40,7 +40,7 @@ python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py --backbo
 ## Inference
 
 ```
-python inference.py --masks --model_path /path/to/model_weights
+python inference.py --model_path /path/to/model_weights
 ```
 
 
