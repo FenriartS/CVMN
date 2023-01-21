@@ -12,12 +12,6 @@ Then, install PyTorch 1.8 and torchvision 0.9:
 ```
 conda install pytorch==1.8.0 torchvision==0.9.0
 ```
-Install pytorch_wavelets
-```
-git clone https://github.com/fbcotter/pytorch_wavelets
-cd pytorch_wavelets
-pip install .
-```
 Install pycocotools
 ```
 conda install cython scipy
