@@ -1,5 +1,5 @@
 """
-Training script of VisTR
+Training script of CVMN
 Modified from DETR (https://github.com/facebookresearch/detr)
 """
 import argparse
