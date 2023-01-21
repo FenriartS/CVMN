@@ -63,15 +63,15 @@ class BasicBlock(nn.Module):
 
 
 class CVMNsegm(nn.Module):
-    def __init__(self, vistr, freeze_vistr=False):
+    def __init__(self, cvmn, freeze_cvmn=False):
         super().__init__()
-        self.vistr = vistr
+        self.cvmn = cvmn
 
-        if freeze_vistr:
+        if freeze_cvmn:
             for p in self.parameters():
                 p.requires_grad_(False)
 
-        hidden_dim, nheads = vistr.transformer.d_model, vistr.transformer.nhead
+        hidden_dim, nheads = cvmn.transformer.d_model, cvmn.transformer.nhead
         self.bbox_attention = MHAttentionMap(hidden_dim, hidden_dim, nheads, dropout=0.0)
         self.mask_head = MaskHeadSmallConv(hidden_dim + nheads, [1024, 512, 256], hidden_dim)
         self.insmask_head = nn.Sequential(
@@ -91,95 +91,45 @@ class CVMNsegm(nn.Module):
             samples = nested_tensor_from_tensor_list(samples)
         # if not isinstance(expressions, NestedTensor):
         #     expressions = nested_tensor_from_exp(expressions)
-        features, pos = self.vistr.backbone(samples)
+        features, pos = self.cvmn.backbone(samples)
         bs = features[-1].tensors.shape[0]
         src, mask = features[-1].decompose()  # src:36*2048*10*15   mask:36*10*15
         assert mask is not None
-        src_proj = self.vistr.input_proj(src) # 36*384*10*15
+        src_proj = self.cvmn.input_proj(src) # 36*384*10*15
         n,c,s_h,s_w = src_proj.shape
-        bs_f = bs//self.vistr.num_frames
-        src_proj = src_proj.reshape(bs_f, self.vistr.num_frames,c, s_h, s_w).permute(0,2,1,3,4).flatten(-2)  # 1*384*36*150
-        mask = mask.reshape(bs_f, self.vistr.num_frames, s_h*s_w)  # 1*36*150
+        bs_f = bs//self.cvmn.num_frames
+        src_proj = src_proj.reshape(bs_f, self.cvmn.num_frames,c, s_h, s_w).permute(0,2,1,3,4).flatten(-2)  # 1*384*36*150
+        mask = mask.reshape(bs_f, self.cvmn.num_frames, s_h*s_w)  # 1*36*150
         pos = pos[-1].permute(0,2,1,3,4).flatten(-2)  # 1*384*36*150  bs*c*l*dim
 
-        # exp_tensor = expressions.tensors
-        # exp_mask = expressions.mask
         # exp_tensor, exp_mask = expressions.decompose()
-        # expressions = expressions.transpose(1, 2)
-        # exp = self.vistr.proj_a(exp_tensor)  # 1*384*l
-
-        # time_start = time.time()
-
-        # exp_tensor, exp_mask = expressions.decompose()
-        exp = self.vistr.proj_t(expressions.transpose(1, 2))
+        exp = self.cvmn.proj_t(expressions.transpose(1, 2))
         out = {}
-        # exp = self.vistr.embedding(expressions)
-        # if is_source:
-        #     # exp = self.vistr.embedding(exp_tensor)  # 1*l*384
-        #     # out['candidates'] = NestedTensor(exp[1:], exp_mask[1:])
-        #     # exp = exp[0][:exp_mask.shape[1]-exp_mask[0].sum()].unsqueeze(0)
-
-        #     # exp_tensor = self.vistr.embedding(exp_tensor)  # 1*l*384
-        #     # out['candidates'] = NestedTensor(exp_tensor[1:], exp_mask[1:])
-        #     exp_tensor = self.vistr.proj_t(exp_tensor.transpose(1, 2)).transpose(1, 2)
-        #     out['candidates'] = NestedTensor(exp_tensor, exp_mask)
-        #     exp = exp_tensor[0][:exp_mask.shape[1]-exp_mask[0].sum()].unsqueeze(0)
-            
-        # else:
-        #     video_tensor = src_proj[0].flatten(-2).transpose(0,1)
-        #     # a = F.cosine_similarity(video_tensor[5].unsqueeze(0), exp_tensor[5][3].unsqueeze(0))
-        #     text_tensor = exp_tensor.reshape(-1, c)
-        #     norm1 = torch.linalg.norm(video_tensor,axis=-1,keepdims=True) + 1e-7
-        #     norm2 = torch.linalg.norm(text_tensor,axis=-1,keepdims=True) + 1e-7
-        #     video_tensor = video_tensor / norm1
-        #     text_tensor = text_tensor / norm2
-        #     sim = torch.mm(text_tensor, video_tensor.T).reshape(exp_tensor.shape[0], exp_tensor.shape[1], -1)
-        #     sim = sim.mean(dim=[1,2])
-        #     tid = torch.argmax(sim)
-        #     # exp = exp_tensor[tid]
-        #     exp = exp_tensor[tid][:exp_mask.shape[1]-exp_mask[tid].sum()].unsqueeze(0)
-        #     out['pseudo_id'] = tid
-
-        # exp = exp.transpose(1,2)
-
-        hs, memory, fusion = self.vistr.transformer(src_proj, mask, exp, self.vistr.query_embed.weight, pos, [])
         
-        # torch.cuda.synchronize()
-        # time_end = time.time()
-        # time_sum = time_end - time_start
+        hs, memory, fusion = self.cvmn.transformer(src_proj, mask, exp, self.cvmn.query_embed.weight, pos, [])
 
         # hallucinator
         memory_h = memory.mean(-1).transpose(1, 2)
-        memory_h = self.vistr.hallucinator(memory_h)
+        memory_h = self.cvmn.hallucinator(memory_h)
 
-        # dann
-        # reverse_feature = ReverseLayerF.apply(hs[-1].view(-1, 384), alpha)
-        # domain_output = self.domain_classifier(reverse_feature)
-        # out['domain_output'] = domain_output
-        
-        # outputs_class = self.vistr.class_embed(hs)
-        outputs_coord = self.vistr.bbox_embed(hs).sigmoid()
+        outputs_coord = self.cvmn.bbox_embed(hs).sigmoid()
         # out = {"pred_logits": outputs_class[-1], "pred_boxes": outputs_coord[-1]}
         out["pred_boxes"] = outputs_coord[-1]
         out['memory'] = fusion[0]  # 3600*1*384
         out['fusion'] = fusion[1]
         out['memory_h'] = memory_h
-        if self.vistr.aux_loss:
+        if self.cvmn.aux_loss:
             out['aux_outputs'] = [{'pred_boxes': a} for a in outputs_coord[:-1]]
-            # out['aux_outputs'] = self.vistr._set_aux_loss(outputs_class)
         for i in range(3):
             _,c_f,h,w = features[i].tensors.shape
-            features[i].tensors = features[i].tensors.reshape(bs_f, self.vistr.num_frames, c_f, h,w)
-        n_f = self.vistr.num_queries//self.vistr.num_frames
+            features[i].tensors = features[i].tensors.reshape(bs_f, self.cvmn.num_frames, c_f, h,w)
+        n_f = self.cvmn.num_queries//self.cvmn.num_frames
         if n_f == 0:
             n_f = 1
         outputs_seg_masks = []
         
         # image level processing using box attention
-        # for i in range((self.vistr.num_frames-1)//2, (self.vistr.num_frames-1)//2+1):
-        #     hs_f = hs[-1][:, :, :]
-        # for i in range(3, 4):
-        for i in range(self.vistr.num_frames):
+        for i in range(self.cvmn.num_frames):
             hs_f = hs[-1][:,i*n_f:(i+1)*n_f,:]
             memory_f = memory[:,:,i,:].reshape(bs_f, c, s_h,s_w)
             mask_f = mask[:,i,:].reshape(bs_f, s_h,s_w)
@@ -198,13 +148,12 @@ class CVMNsegm(nn.Module):
         outputs_seg_masks = torch.cat(outputs_seg_masks,1).squeeze(0).permute(1,0,2,3)  # 36*10*75*101
         # outputs_seg_masks = outputs_seg_masks.reshape(1,360,outputs_seg_masks.size(-2),outputs_seg_masks.size(-1))  # 1*360*75*101
         # outputs_seg_masks = outputs_seg_masks.reshape(bs_f,36,outputs_seg_masks.size(-2),outputs_seg_masks.size(-1))
-        outputs_seg_masks = outputs_seg_masks.reshape(bs_f,self.vistr.num_frames,outputs_seg_masks.size(-2),outputs_seg_masks.size(-1))
+        outputs_seg_masks = outputs_seg_masks.reshape(bs_f,self.cvmn.num_frames,outputs_seg_masks.size(-2),outputs_seg_masks.size(-1))
         # outputs_seg_masks = outputs_seg_masks.reshape(bs_f,1,outputs_seg_masks.size(-2),outputs_seg_masks.size(-1))
         out["pred_masks"] = outputs_seg_masks
 
-        # visual_feature = samples.tensors[(self.vistr.num_frames-1)//2:(self.vistr.num_frames-1)//2+1]
+
         visual_feature = samples.tensors
-        # seg_mask = F.interpolate(outputs_seg_masks, size=visual_feature.shape[-2:])
         seg_mask = F.interpolate(outputs_seg_masks, size=visual_feature.shape[-2:], mode='bilinear')
         seg_mask = seg_mask.transpose(0,1)
         out["pred_interp"] = seg_mask
@@ -212,13 +161,6 @@ class CVMNsegm(nn.Module):
         process = T.Compose([T.Resize(size=224), T.CenterCrop(size=(224,224))])
         visual_feature1 = process(visual_feature)
         out["rec_feature"] = visual_feature1
-        
-
-
-        # visual_feature = features[1].tensors
-        # seg_mask = F.interpolate(outputs_seg_masks, size=visual_feature.shape[-2:])
-        # rnn_hidden = self.reconstructor(seg_mask, visual_feature)
-        # out["rnn_hidden"] = rnn_hidden
 
         return out
 

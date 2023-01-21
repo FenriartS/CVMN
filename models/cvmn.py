@@ -23,18 +23,7 @@ import math
 
 
 class CVMN(nn.Module):
-    """ This is the VisTR module that performs video object detection """
     def __init__(self, backbone, transformer, num_frames, num_queries, aux_loss=False):
-        """ Initializes the model.
-        Parameters:
-            backbone: torch module of the backbone to be used. See backbone.py
-            transformer: torch module of the transformer architecture. See transformer.py
-            num_classes: number of object classes
-            num_queries: number of object queries, ie detection slot. This is the maximal number of objects
-                         VisTR can detect in a video. For ytvos, we recommend 10 queries for each frame, 
-                         thus 360 queries for 36 frames.
-            aux_loss: True if auxiliary decoding losses (loss at each decoder layer) are to be used.
-        """
         super().__init__()
         self.num_queries = num_queries
         self.transformer = transformer
@@ -76,7 +65,7 @@ class CVMN(nn.Module):
         src_proj = src_proj.reshape(n//self.num_frames, self.num_frames, c, h, w).permute(0,2,1,3,4).flatten(-2)
         mask = mask.reshape(n//self.num_frames, self.num_frames, h*w)
         pos = pos.permute(0,2,1,3,4).flatten(-2)
-        
+
         exp = self.embedding(expressions)
 
         hs = self.transformer(src_proj, mask, exp, self.query_embed.weight, pos)[0]
@@ -100,7 +89,7 @@ class CVMN(nn.Module):
 
 
 class SetCriterion(nn.Module):
-    """ This class computes the loss for VisTR.
+    """ This class computes the loss for CVMN.
     The process happens in two steps:
         1) we compute hungarian assignment between ground truth boxes and the outputs of the model
         2) we supervise each pair of matched ground-truth / prediction (supervise class and box)
