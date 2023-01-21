@@ -60,17 +60,13 @@ class A2DSubset(Dataset):
         video_id, instance_id, frame_idx, query = self.samples[index]
         query = query.lower()
         frame_idx = int(frame_idx)
-        # is_full = 1 if video_id in self.full_videos else 0
-        is_full = 1
-        # is_full = 1 if index in self.idx else 0
-        i3d_path = os.path.join('/home1/linzhijie/data/A2D/i3d-rgb-MaxPool3d_4a_3x3/%s/%d.npy' % (video_id, frame_idx))
-        h5_path = os.path.join('../lzj/data/a2d/a2d_annotation_with_instances', video_id,
+        
+        h5_path = os.path.join('data/a2d/a2d_annotation_with_instances', video_id,
                                '%05d.h5' % (frame_idx + 1))
         if not os.path.exists(h5_path):
-            h5_path = os.path.join('../lzj/data/a2d/a2d_annotation_with_instances', video_id,
+            h5_path = os.path.join('data/a2d/a2d_annotation_with_instances', video_id,
                                    '%05d.h5' % (24 + 1))
-        frame_path = os.path.join('../lzj/data/a2d/Release/pngs320H', video_id)
-        # frame_path = os.path.join('/home1/linzhijie/data/A2D/rgb-frame/%s/' % video_id)
+        frame_path = os.path.join('data/a2d/Release/pngs320H', video_id)
 
         frames = list(map(lambda x: os.path.join(frame_path, x),
                           sorted(os.listdir(frame_path))))
@@ -362,11 +358,9 @@ def make_coco_transforms(image_set):
 
 def build(image_set, args):
     paths = {
-        "videoset_path": "../lzj/data/a2d/Release/videoset.csv",
-        "annotation_path": "../lzj/data/a2d/Release/Annotations",
-        "vocab_path": "../lzj/data/a2d/glove_a2d.bin",
-        "sample_path": "../lzj/data/a2d/a2d_annotation2.txt",
-        "max_num_words": 20,
+        "videoset_path": "data/a2d/Release/videoset.csv",
+        "annotation_path": "data/a2d/Release/Annotations",
+        "sample_path": "data/a2d/a2d_annotation_info.txt",
     }
     dataset = A2DSubset(image_set, paths, num_frames = args.num_frames)
     return dataset
