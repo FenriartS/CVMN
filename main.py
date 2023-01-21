@@ -27,7 +27,7 @@ def get_args_parser():
     parser.add_argument('--batch_size', default=1, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=18, type=int)
-    parser.add_argument('--lr_drop', default=1, type=int) # 12
+    parser.add_argument('--lr_drop', default=12, type=int)
     parser.add_argument('--clip_max_norm', default=0.1, type=float,
                         help='gradient clipping max norm')
 
@@ -88,7 +88,7 @@ def get_args_parser():
     parser.add_argument('--ytvos_path', type=str)
     parser.add_argument('--remove_difficult', action='store_true')
 
-    parser.add_argument('--output_dir', default='da_dwt0008_soft_box105_text_pseudo_rec',
+    parser.add_argument('--output_dir', default='output',
                         help='path where to save, empty for no saving')
     parser.add_argument('--device', default='cuda',
                         help='device to use for training / testing')

@@ -39,7 +39,6 @@ python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py --backbo
 
 ## Inference
 
-For A2D-Sentences dataset:
 ```
 python inference.py --masks --model_path /path/to/model_weights
 ```

@@ -56,7 +56,7 @@ def get_args_parser():
                         help='gradient clipping max norm')
 
     # Model parameters
-    parser.add_argument('--model_path', type=str, default='base_tclipRN50_ba4_mmd01_res0007t0003/lr/checkpoint0001.pth',
+    parser.add_argument('--model_path', type=str, default='output/checkpoint.pth',
                         help="Path to the model weights.")
     # * Backbone
     parser.add_argument('--backbone', default='resnet50', type=str,
@@ -88,8 +88,6 @@ def get_args_parser():
     parser.add_argument('--pre_norm', action='store_true')
 
     # * Segmentation
-    # parser.add_argument('--masks', action='store_true',
-    #                     help="Train segmentation head if the flag is provided")
     parser.add_argument('--masks', action='store_false',
                         help="Train segmentation head if the flag is provided")
 
@@ -114,7 +112,7 @@ def get_args_parser():
     # dataset parameters
     parser.add_argument('--img_path', default='data/rvos/train/JPEGImages/')
     parser.add_argument('--ann_path', default='data/rvos/ann/instances_test_sub.json')
-    parser.add_argument('--save_path', default='results/results_dwt0008_soft_box105_text_rmpunc_0008.json')
+    parser.add_argument('--save_path', default='')
     parser.add_argument('--dataset_file', default='ytvos')
     parser.add_argument('--coco_path', type=str)
     parser.add_argument('--coco_panoptic_path', type=str)
